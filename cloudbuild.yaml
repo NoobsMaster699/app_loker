@@ -1,25 +1,56 @@
 steps:
+  # Build the container image
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['build', '-t', 'gcr.io/$PROJECT_ID/laravel-app', '.']
+    args: [
+      'build', 
+      '-t', 
+      'gcr.io/$PROJECT_ID/${_CLOUD_RUN_SERVICE}', 
+      '.'
+    ]
+    
+  # Push the container image to Container Registry
   - name: 'gcr.io/cloud-builders/docker'
-    args: ['push', 'gcr.io/$PROJECT_ID/laravel-app']
+    args: [
+      'push', 
+      'gcr.io/$PROJECT_ID/${_CLOUD_RUN_SERVICE}'
+    ]
+    
+  # Deploy container image to Cloud Run
   - name: 'gcr.io/cloud-builders/gcloud'
     args: [
-      'run', 'deploy', 'laravel-app',
-      '--image', 'gcr.io/$PROJECT_ID/laravel-app',
-      '--region', 'us-central1',
-      '--platform', 'managed',
+      'run',
+      'deploy',
+      '${_CLOUD_RUN_SERVICE}',
+      '--image',
+      'gcr.io/$PROJECT_ID/${_CLOUD_RUN_SERVICE}',
+      '--region',
+      '${_REGION}',
+      '--platform',
+      'managed',
+      '--memory',
+      '256Mi',
       '--allow-unauthenticated',
-      '--add-cloudsql-instances', 'drivekj-427512:us-central1:lokerdb'
+      '--update-env-vars',
+      'APP_DEBUG=${_APP_DEBUG}',
+      'DB_CONNECTION=${_DB_CONNECTION}',
+      'DB_DATABASE=${_DB_DATABASE}',
+      'DB_USERNAME=${_DB_USERNAME}',
+      'DB_PASSWORD=${_DB_PASSWORD}',
+      'DB_SOCKET=${_DB_SOCKET}'
     ]
-  - name: 'gcr.io/cloud-builders/gcloud'
-    entrypoint: 'sh'
-    args:
-      - '-c'
-      - |
-        gcloud sql connect drivekj-427512:us-central1:lokerdb --user=root --quiet < /dev/null
-        php artisan migrate --force
-        php artisan db:seed --force
 
 images:
-  - 'gcr.io/$PROJECT_ID/laravel-app'
+- 'gcr.io/$PROJECT_ID/${_CLOUD_RUN_SERVICE}'
+
+options:
+  substitution_option: 'ALLOW_LOOSE'
+
+substitutions:
+  _APP_DEBUG: 'true'
+  _DB_CONNECTION: 'mysql'
+  _DB_DATABASE: 'loker_db'
+  _DB_USERNAME: 'root'
+  _DB_PASSWORD: 'Apacoba69'
+  _DB_SOCKET: '/cloudsql/drivekj-427512:asia-southeast2:lokerdb'
+  _CLOUD_RUN_SERVICE: 'laravel-app'
+  _REGION: 'asia-southeast2'
